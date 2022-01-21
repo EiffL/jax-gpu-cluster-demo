@@ -3,6 +3,8 @@ from absl import app
 from absl import flags
 from absl import logging
 
+import os
+
 import functools
 import atexit
 
@@ -12,15 +14,11 @@ from jax.lib import xla_extension as xc
 FLAGS = flags.FLAGS
 
 # JAX/XLA GPU cluster flags.
-flags.DEFINE_string('gpu_cluster_chief_ip', '0.0.0.0', 'IP of GPU cluster chief.')
-flags.DEFINE_integer('gpu_cluster_n_hosts', 1,
-                     'Number of hosts in GPU cluster.')
-flags.DEFINE_integer('gpu_cluster_host_id', 0, 'Host id inside GPU cluster.')
 flags.DEFINE_integer('gpu_cluster_port', 5005, 'Port to use in GPU cluster.')
 
 flags.DEFINE_integer('log_level', logging.INFO, 'Log level.')
 
-def make_jax_gpu_cluster(host_id, server_ip, n_hosts, server_port=5005):
+def make_jax_gpu_cluster(host_id, n_hosts, server_ip, server_port=5005):
   """Make JAX GPU Cluster."""
 
   addr = f'{server_ip}:{server_port}'
@@ -46,13 +44,20 @@ def make_jax_gpu_cluster(host_id, server_ip, n_hosts, server_port=5005):
 def main(_):
   logging.set_verbosity(FLAGS.log_level)
 
+  # Retrieve parameters from slurm
+  gpu_cluster_host_id = int(os.environ['SLURM_PROCID'])
+  gpu_cluster_n_hosts = int(os.environ['SLURM_NTASKS'])
+  gpu_cluster_chief_ip = os.environ['SLURM_NODELIST'].split(',')[0].replace('[', '')
+
+  logging.info('process %d starting.', gpu_cluster_host_id)
+
   # Initialize the cluster
-  make_jax_gpu_cluster(FLAGS.gpu_cluster_host_id,
-                       FLAGS.gpu_cluster_chief_ip,
-                       FLAGS.gpu_cluster_n_hosts,
+  make_jax_gpu_cluster(gpu_cluster_host_id,
+                       gpu_cluster_n_hosts,
+                       gpu_cluster_chief_ip,
                        FLAGS.gpu_cluster_port)
 
-  print('I am %d'%FLAGS.gpu_cluster_host_id, 'I see %d/%d devices'%(jax.local_device_count(), jax.device_count()))
+  print('I am %d'%gpu_cluster_host_id, 'I see %d/%d devices'%(jax.local_device_count(), jax.device_count()))
     
     
 if __name__ == '__main__':

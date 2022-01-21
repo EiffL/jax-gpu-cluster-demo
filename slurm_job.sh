@@ -9,5 +9,6 @@
 #SBATCH --gpus-per-task=1
 #SBATCH --gpu-bind=map_gpu:0,1,2,3
 
+
 export SLURM_CPU_BIND="cores"
-srun python demo.py --gpu_cluster_n_hosts=16 --gpu_cluster_host_id=$SLURM_PROCID
+srun python demo.py
